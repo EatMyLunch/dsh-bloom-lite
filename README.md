@@ -10,7 +10,7 @@ no per-frame work of any kind.
 
 | | dsh-bloom-theme 0.18.1 | Bloom Lite |
 |---|---|---|
-| Shipped client artifact | 206,024 B | **2,747 B** |
+| Shipped client artifact | 206,024 B | **2,811 B** |
 | Injected style tags | 3 | **1** |
 | Colours / variants evaluated at runtime | 10 palettes | **1 palette, resolved at build time** |
 | `backdrop-filter` (glass blur) | 33 | **0** |
@@ -38,7 +38,9 @@ ramps recolours the entire application — light and dark, every panel, every st
 without touching a single component rule.
 
 * **Rule 1** rewrites the 56 raw ramp steps (`neutral-bluish-*`, `neutral-*`,
-  `blue-*`, `deepseek-*`) to the Bloom Morandi palette, plus the light accent pair.
+  `blue-*`, `deepseek-*`) to the Bloom Morandi palette, re-points the light accent
+  pair, and sets the two surfaces the Host paints with pure white — the canvas and
+  the sidebar column — to Bloom's own light anchors.
 * **Rule 2** re-points the accent pair for dark mode.
 
 Cascade facts, verified against the installed Harness stylesheet rather than assumed:
@@ -53,8 +55,13 @@ Both of our rules win on plain specificity, so the stylesheet never needs
 the accent, while every other dark-mode alias still resolves through the ramps we
 already re-hued.
 
-Cost per session: **1 element, 1 CSS parse (~2.15 KiB), 1 cascade pass.** The style
+Cost per session: **1 element, 1 CSS parse (~2.21 KiB), 1 cascade pass.** The style
 node is registered through `ctx.effect`, so disposing the plugin removes it.
+
+The accent is worth one note: the Host defines
+`--dsw-alias-button-primary-fill: var(--dsw-alias-brand-primary)`, so moving
+`brand-primary` alone turns every primary button, checkbox, radio and the boot
+spinner mist blue — still without a single component rule.
 
 ## Re-hueing
 
@@ -66,20 +73,25 @@ node _tools/build.mjs   # inlines + minifies -> client.js, and runs the guards
 ```
 
 `_tools/gen.mjs` converts every Host ramp step to OKLab, moves it to hue 240
-(mist blue) with a chroma ceiling, and **preserves each step's lightness**. That is
-why every contrast relationship the Host designed survives the retheme nearly
-untouched:
+(mist blue) with a chroma ceiling, and **preserves each step's lightness** — which is
+why the contrast the Host designed survives the re-hue. The two largest surfaces are
+the exception: the Host paints them with its pure white step, whose lightness this
+generator keeps on purpose, so the canvas and the sidebar are set at the token level
+to Bloom's own light anchors, `oklch(96.5% 0.01 240)` and `oklch(94.5% 0.012 240)`.
 
 | Pair | Bloom Lite | Verdict |
 |---|---|---|
-| light body text on base | 18.87:1 | AA |
-| light secondary text on base | 5.81:1 | AA |
-| light tertiary text on base | 3.68:1 | AA-large |
-| light primary button label (white on `#3077a4`) | 4.88:1 | AA |
-| dark body text on base | 17.51:1 | AA |
-| dark secondary text on base | 12.11:1 | AA |
-| dark tertiary text on base | 8.54:1 | AA |
-| dark primary button label (`#0a1218` on `#6baad6`) | 7.50:1 | AA |
+| light body text on the mist canvas | 17.16:1 | AA |
+| light secondary text on canvas | 5.24:1 | AA |
+| light tertiary text on canvas | 3.37:1 | AA-large |
+| light text on a white card | 18.90:1 | AA |
+| light sidebar text | 4.92:1 | AA |
+| light primary button label (white on `#2078ab`) | 4.84:1 | AA |
+| dark body text on base | 17.45:1 | AA |
+| dark secondary text on base | 12.10:1 | AA |
+| dark tertiary text on base | 8.53:1 | AA |
+| dark text on a raised panel | 15.02:1 | AA |
+| dark primary button label (`#07121b` on `#5dabe0`) | 7.53:1 | AA |
 
 Change `HUE` (or the three chroma ceilings `C_NEUTRAL` / `C_GRAY` / `C_ACCENT`) at
 the top of `_tools/gen.mjs` and re-run both scripts to get another mood.

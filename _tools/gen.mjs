@@ -30,9 +30,9 @@ function findHost() {
 
 const HOST = findHost()
 const HUE = 240          // Morandi cool / mist blue
-const C_NEUTRAL = 0.022  // chroma ceiling for the bluish neutral ramp
-const C_GRAY = 0.012     // chroma ceiling for the pure-gray ramp
-const C_ACCENT = 0.100   // chroma ceiling for the blue / deepseek ramps
+const C_NEUTRAL = 0.028  // chroma ceiling for the bluish neutral ramp
+const C_GRAY = 0.014     // chroma ceiling for the pure-gray ramp
+const C_ACCENT = 0.115   // chroma ceiling for the blue / deepseek ramps
 
 /* ---------- color math ---------- */
 const srgbToLin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
@@ -86,10 +86,27 @@ function recolor(hex, cap) {
   const [L, a, b] = rgb2oklab(hex2rgb(hex))
   if (L >= 0.999) return '#ffffff'
   if (L <= 0.001) return '#000000'
-  const taper = 0.55 + 0.45 * 4 * L * (1 - L)
+  const taper = 0.70 + 0.30 * 4 * L * (1 - L)
   const C = Math.min(cap * taper, maxChroma(L, HUE) * 0.9)
   const rad = HUE * Math.PI / 180
   return rgb2hex(oklab2rgb([L, C * Math.cos(rad), C * Math.sin(rad)]))
+}
+
+// A plain OKLCH -> hex helper, used for the surface anchors below.
+const oklch = (L, C, h = HUE) => rgb2hex(oklab2rgb([L, C * Math.cos(h * Math.PI / 180), C * Math.sin(h * Math.PI / 180)]))
+
+// The two largest surfaces are painted with the Host's PURE WHITE light step, whose
+// lightness this generator deliberately preserves - so a ramp re-hue can never move them.
+// They are therefore set at the token level, to Bloom's own light anchors from the
+// original palette: bgL oklch(96% 0.01 240) and sfL oklch(94% 0.01 240).
+// Dark mode needs no entry: its canvas already comes from the bluish-950 step, which the
+// ramp re-hue does move (#151517 -> #0e161d).
+const SURFACE = {
+  light: {
+    '--dsw-alias-bg-base': oklch(0.965, 0.010),         // canvas
+    '--dsw-specific-sidebar-fill': oklch(0.945, 0.012), // sidebar column
+  },
+  dark: {},
 }
 
 /* ---------- read the host ramps ---------- */
@@ -120,8 +137,13 @@ for (const [group, cap] of Object.entries(capOf)) {
 // live on `body` (0,0,1); dark aliases on `body[data-ds-dark-theme]` (0,1,1).
 // `html body` (0,0,2) therefore wins everywhere by plain cascade - no !important, ever.
 const ACCENT = { light: 'blue-600', dark: 'blue-400' }
-const BASE = `html body{${decls.join(';')};--dsw-alias-brand-primary:var(--dsw-static-${ACCENT.light});--dsw-alias-brand-text:var(--dsw-static-${ACCENT.light})}`
-const DARK = `html body[data-ds-dark-theme]{--dsw-alias-brand-primary:var(--dsw-static-${ACCENT.dark});--dsw-alias-brand-text:var(--dsw-static-${ACCENT.dark})}`
+// brand-primary is what --dsw-alias-button-primary-fill points at on `body`, so the accent
+// reaches primary buttons, checkboxes and the boot spinner without touching a component rule.
+const brand = (step) => `--dsw-alias-brand-primary:var(--dsw-static-${step});--dsw-alias-brand-text:var(--dsw-static-${step})`
+const surface = (mode) => Object.entries(SURFACE[mode]).map(([token, hex]) => `${token}:${hex}`).join(';')
+const merge = (...parts) => parts.filter((p) => p.length > 0).join(';')
+const BASE = `html body{${merge(decls.join(';'), brand(ACCENT.light), surface('light'))}}`
+const DARK = `html body[data-ds-dark-theme]{${merge(brand(ACCENT.dark), surface('dark'))}}`
 const css = `${BASE}\n${DARK}`
 
 console.log(`steps: ${decls.length}  changed: ${audit.length}`)
@@ -140,45 +162,49 @@ for (const m of src.matchAll(/--dsw-static-((?:neutral-bluish|neutral|blue|deeps
 const modes = { light: new Map(), dark: new Map() }
 for (const rule of src.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
   const target = /data-ds-dark-theme/.test(rule[1]) ? modes.dark : modes.light
-  for (const m of rule[2].matchAll(/--dsw-alias-([a-z0-9-]+)\s*:\s*var\(--dsw-static-((?:neutral-bluish|neutral|blue|deepseek)-[0-9]+)\)/g)) {
+  for (const m of rule[2].matchAll(/--dsw-(?:alias|specific)-([a-z0-9-]+)\s*:\s*var\(--dsw-static-((?:neutral-bluish|neutral|blue|deepseek)-[0-9]+)\)/g)) {
     target.set(m[1], m[2])
   }
 }
 const bloom = new Map()
 for (const d of decls) { const [k, v] = d.split(':'); bloom.set(k.replace('--dsw-static-', ''), v) }
 const resolve = (step) => bloom.get(step) ?? statics.get(step)
+const valueOf = (mode, alias) => SURFACE[mode]['--dsw-specific-' + alias] ?? SURFACE[mode]['--dsw-alias-' + alias]
+  ?? (modes[mode].get(alias) === undefined ? undefined : resolve(modes[mode].get(alias)))
 
-// optional accent override: brand-primary / brand-text re-pointed at the blue ramp
+// the accent override: brand-primary / brand-text re-pointed at the blue ramp
 const BRAND_OVERRIDE = true
+
+console.log('\n--- surface anchors (light) ---')
+for (const [token, hex] of Object.entries(SURFACE.light)) console.log(`${token.padEnd(30)} ${hex}`)
 
 console.log('\n--- contrast audit (Bloom palette%s) ---', BRAND_OVERRIDE ? ', accent override ON' : '')
 const pairs = [
-  ['light', 'label-primary', 'bg-base', 'body text'],
-  ['light', 'label-secondary', 'bg-base', 'secondary text'],
-  ['light', 'label-tertiary', 'bg-base', 'tertiary text'],
+  ['light', 'label-primary', 'bg-base', 'canvas body text'],
+  ['light', 'label-secondary', 'bg-base', 'canvas secondary text'],
+  ['light', 'label-tertiary', 'bg-base', 'canvas tertiary text'],
+  ['light', 'label-primary', 'bg-layer-1', 'text on white card'],
+  ['light', 'label-secondary', 'sidebar-fill', 'sidebar text'],
   ['light', 'label-primary-foreground', 'button-primary-fill', 'primary button label'],
-  ['light', 'label-primary', 'bg-elevated', 'text on elevated surface'],
-  ['dark', 'label-primary', 'bg-base', 'body text'],
-  ['dark', 'label-secondary', 'bg-base', 'secondary text'],
-  ['dark', 'label-tertiary', 'bg-base', 'tertiary text'],
+  ['dark', 'label-primary', 'bg-base', 'canvas body text'],
+  ['dark', 'label-secondary', 'bg-base', 'canvas secondary text'],
+  ['dark', 'label-tertiary', 'bg-base', 'canvas tertiary text'],
+  ['dark', 'label-primary', 'bg-layer-1', 'text on raised panel'],
   ['dark', 'label-primary-foreground', 'button-primary-fill', 'primary button label'],
-  ['dark', 'label-primary', 'bg-elevated', 'text on elevated surface'],
 ]
 for (const [mode, fg, bg, what] of pairs) {
-  const a = modes[mode]
-  let f = a.get(fg), b = a.get(bg)
+  let f = valueOf(mode, fg), b = valueOf(mode, bg)
   if (BRAND_OVERRIDE) {
-    if (fg === 'brand-primary') f = ACCENT[mode]
-    if (bg === 'brand-primary' || bg === 'button-primary-fill') b = ACCENT[mode]
+    if (bg === 'brand-primary' || bg === 'button-primary-fill') b = resolve(ACCENT[mode])
+    if (fg === 'brand-primary' || fg === 'brand-text') f = resolve(ACCENT[mode])
   }
   if (!f || !b) { console.log(`${mode.padEnd(5)} ${what.padEnd(24)} unresolved (fg=${f} bg=${b})`); continue }
-  const c = contrast(resolve(f), resolve(b))
-  console.log(`${mode.padEnd(5)} ${what.padEnd(24)} ${resolve(f)} on ${resolve(b)}  ${c.toFixed(2)}:1  ${c >= 4.5 ? 'AA' : c >= 3 ? 'AA-large' : 'FAIL'}`)
+  const c = contrast(f, b)
+  console.log(`${mode.padEnd(5)} ${what.padEnd(24)} ${f} on ${b}  ${c.toFixed(2)}:1  ${c >= 4.5 ? 'AA' : c >= 3 ? 'AA-large' : 'FAIL'}`)
 }
 console.log('\naccent candidates: light %s = %s   dark %s = %s', ACCENT.light, resolve(ACCENT.light), ACCENT.dark, resolve(ACCENT.dark))
-console.log('brand-primary host: light %s / dark %s   button-primary-fill host: light %s / dark %s',
-  resolve(modes.light.get('brand-primary')), resolve(modes.dark.get('brand-primary')),
-  resolve(modes.light.get('button-primary-fill') ?? ''), resolve(modes.dark.get('button-primary-fill') ?? ''))
+console.log('host brand was: light %s / dark %s - the Host points --dsw-alias-button-primary-fill at it, so the accent reaches every primary button',
+  resolve(modes.light.get('brand-primary')), resolve(modes.dark.get('brand-primary')))
 
 console.log('\n--- generated CSS (%d bytes) ---', Buffer.byteLength(css))
 writeFileSync('src/client.css', `/* dsh-bloom-lite - generated by _tools/gen.mjs. Re-run the generator instead of hand-editing. */\n`

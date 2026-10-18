@@ -1,6 +1,6 @@
 {
   "name": "dsh-bloom-lite",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Bloom Lite - Morandi mist-blue theme for the DeepSeek Harness Web UI, delivered as two CSS rules with zero runtime cost.",
   "type": "module",
@@ -32,7 +32,8 @@
     "client.js",
     "cordis.patch.yml",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "dsh",

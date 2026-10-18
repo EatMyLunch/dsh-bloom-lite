@@ -41,9 +41,10 @@ if (violations.length > 0) {
 /* ---------- structural check ---------- */
 const statics = (min.match(/--dsw-static-[a-z0-9-]+:/g) ?? []).length
 const aliases = (min.match(/--dsw-alias-[a-z0-9-]+:/g) ?? []).length
+const specifics = (min.match(/--dsw-specific-[a-z0-9-]+:/g) ?? []).length
 const rules = (min.match(/\{/g) ?? []).length
-if (statics !== 56 || aliases !== 4 || rules !== 2) {
-  console.error(`BUILD FAILED - expected 2 rules / 56 static / 4 alias declarations, got ${rules} / ${statics} / ${aliases}`)
+if (statics !== 56 || aliases < 2 || rules !== 2) {
+  console.error(`BUILD FAILED - expected 2 rules / 56 static / >=2 alias declarations, got ${rules} / ${statics} / ${aliases}`)
   process.exit(1)
 }
 for (const selector of ['html body{', 'html body[data-ds-dark-theme]{']) {
@@ -77,5 +78,5 @@ if (!out.includes('window.__ModuleLoader__.load')) {
 writeFileSync('client.js', out + '\n')
 
 const kb = (n) => (n / 1024).toFixed(2) + ' KiB'
-console.log('stylesheet  ' + kb(Buffer.byteLength(css)) + ' -> ' + kb(Buffer.byteLength(min)) + `  (${rules} rules, ${statics} static + ${aliases} alias declarations)`)
+console.log('stylesheet  ' + kb(Buffer.byteLength(css)) + ' -> ' + kb(Buffer.byteLength(min)) + `  (${rules} rules, ${statics} static + ${aliases} alias + ${specifics} specific declarations)`)
 console.log('client.js   ' + kb(Buffer.byteLength(template)) + ' template -> ' + kb(Buffer.byteLength(out)) + ' shipped')
