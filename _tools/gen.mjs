@@ -95,16 +95,21 @@ function recolor(hex, cap) {
 // A plain OKLCH -> hex helper, used for the surface anchors below.
 const oklch = (L, C, h = HUE) => rgb2hex(oklab2rgb([L, C * Math.cos(h * Math.PI / 180), C * Math.sin(h * Math.PI / 180)]))
 
-// The two largest surfaces are painted with the Host's PURE WHITE light step, whose
-// lightness this generator deliberately preserves - so a ramp re-hue can never move them.
-// They are therefore set at the token level, to Bloom's own light anchors from the
-// original palette: bgL oklch(96% 0.01 240) and sfL oklch(94% 0.01 240).
-// Dark mode needs no entry: its canvas already comes from the bluish-950 step, which the
-// ramp re-hue does move (#151517 -> #0e161d).
+// The Host paints its whole light UI with its PURE WHITE step - canvas, panels and cards
+// are all neutral-bluish-00 - and this generator deliberately preserves each step's
+// lightness, so a ramp re-hue can never move those surfaces. They are set at the token
+// level instead, to Bloom's own light anchors from the original palette (bgL 96%, sfL 94%),
+// with the panel layers kept lighter than the canvas so the mist reads as the page and the
+// content still reads as paper.
+// Dark mode needs no entry: its canvas and panels already come from the bluish-950/875/850/
+// 800 steps, which the ramp re-hue does move.
 const SURFACE = {
   light: {
-    '--dsw-alias-bg-base': oklch(0.965, 0.010),         // canvas
-    '--dsw-specific-sidebar-fill': oklch(0.945, 0.012), // sidebar column
+    '--dsw-alias-bg-base': oklch(0.965, 0.010),          // canvas: the mist page
+    '--dsw-alias-bg-layer-1': oklch(0.976, 0.008),       // panels, cards, the conversation
+    '--dsw-alias-bg-layer-2': oklch(0.984, 0.006),       // raised panels (hover, sheets)
+    '--dsw-alias-bg-layer-3': oklch(0.990, 0.004),       // popovers, menus, dialogs
+    '--dsw-specific-sidebar-fill': oklch(0.945, 0.012),  // sidebar column: deepest tint
   },
   dark: {},
 }
@@ -183,7 +188,10 @@ const pairs = [
   ['light', 'label-primary', 'bg-base', 'canvas body text'],
   ['light', 'label-secondary', 'bg-base', 'canvas secondary text'],
   ['light', 'label-tertiary', 'bg-base', 'canvas tertiary text'],
-  ['light', 'label-primary', 'bg-layer-1', 'text on white card'],
+  ['light', 'label-primary', 'bg-layer-1', 'panel text'],
+  ['light', 'label-secondary', 'bg-layer-1', 'panel secondary text'],
+  ['light', 'label-tertiary', 'bg-layer-1', 'panel tertiary text'],
+  ['light', 'label-primary', 'bg-layer-3', 'popover text'],
   ['light', 'label-secondary', 'sidebar-fill', 'sidebar text'],
   ['light', 'label-primary-foreground', 'button-primary-fill', 'primary button label'],
   ['dark', 'label-primary', 'bg-base', 'canvas body text'],

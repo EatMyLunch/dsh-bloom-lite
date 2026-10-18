@@ -19,6 +19,14 @@ window.__ModuleLoader__.load({
       if (el === null) {
         el = document.createElement('style');
         el.id = ID;
+        // Claim ownership explicitly. The module loader adopts every UNTAGGED style tag it
+        // finds while materialising a client module (dsh-client-modules/lib/client.js:
+        // `for (const el of document.querySelectorAll('style:not([data-plugin])'))
+        // el.setAttribute('data-plugin', id)`) and later removes `style[data-plugin=<id>]`
+        // when that other module unloads - which would delete this theme. Stamping our own
+        // id also makes the loader's ownership sweep treat the tag as ours.
+        el.dataset.plugin = ID;
+        el.dataset.pluginCss = ID;
         el.textContent = CSS;
         (document.head || document.documentElement).appendChild(el);
       }

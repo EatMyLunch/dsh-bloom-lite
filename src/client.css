@@ -59,6 +59,9 @@ html body{
 --dsw-alias-brand-primary:var(--dsw-static-blue-600);
 --dsw-alias-brand-text:var(--dsw-static-blue-600);
 --dsw-alias-bg-base:#eef5fa;
+--dsw-alias-bg-layer-1:#f2f8fc;
+--dsw-alias-bg-layer-2:#f6fafd;
+--dsw-alias-bg-layer-3:#f9fcfe;
 --dsw-specific-sidebar-fill:#e6eef4}
 html body[data-ds-dark-theme]{
 --dsw-alias-brand-primary:var(--dsw-static-blue-400);

@@ -10,7 +10,7 @@ no per-frame work of any kind.
 
 | | dsh-bloom-theme 0.18.1 | Bloom Lite |
 |---|---|---|
-| Shipped client artifact | 206,024 B | **2,811 B** |
+| Shipped client artifact | 206,024 B | **2,955 B** |
 | Injected style tags | 3 | **1** |
 | Colours / variants evaluated at runtime | 10 palettes | **1 palette, resolved at build time** |
 | `backdrop-filter` (glass blur) | 33 | **0** |
@@ -39,8 +39,8 @@ without touching a single component rule.
 
 * **Rule 1** rewrites the 56 raw ramp steps (`neutral-bluish-*`, `neutral-*`,
   `blue-*`, `deepseek-*`) to the Bloom Morandi palette, re-points the light accent
-  pair, and sets the two surfaces the Host paints with pure white — the canvas and
-  the sidebar column — to Bloom's own light anchors.
+  pair, and sets the surfaces the Host paints with pure white — the canvas, the three
+  panel layers and the sidebar column — to Bloom's own light anchors.
 * **Rule 2** re-points the accent pair for dark mode.
 
 Cascade facts, verified against the installed Harness stylesheet rather than assumed:
@@ -55,8 +55,12 @@ Both of our rules win on plain specificity, so the stylesheet never needs
 the accent, while every other dark-mode alias still resolves through the ramps we
 already re-hued.
 
-Cost per session: **1 element, 1 CSS parse (~2.21 KiB), 1 cascade pass.** The style
-node is registered through `ctx.effect`, so disposing the plugin removes it.
+Cost per session: **1 element, 1 CSS parse (~2.30 KiB), 1 cascade pass.** The style
+node is registered through `ctx.effect`, so disposing the plugin removes it, and the
+tag carries `data-plugin` / `data-plugin-css` naming this plugin: the Harness's module
+loader adopts every *untagged* `<style>` it finds while materialising a client module
+(`dsh-client-modules/lib/client.js`) and deletes `style[data-plugin=<id>]` when that
+module unloads, so an unclaimed tag could be handed to a stranger and removed with it.
 
 The accent is worth one note: the Host defines
 `--dsw-alias-button-primary-fill: var(--dsw-alias-brand-primary)`, so moving
@@ -74,17 +78,23 @@ node _tools/build.mjs   # inlines + minifies -> client.js, and runs the guards
 
 `_tools/gen.mjs` converts every Host ramp step to OKLab, moves it to hue 240
 (mist blue) with a chroma ceiling, and **preserves each step's lightness** — which is
-why the contrast the Host designed survives the re-hue. The two largest surfaces are
-the exception: the Host paints them with its pure white step, whose lightness this
-generator keeps on purpose, so the canvas and the sidebar are set at the token level
-to Bloom's own light anchors, `oklch(96.5% 0.01 240)` and `oklch(94.5% 0.012 240)`.
+why the contrast the Host designed survives the re-hue. The light surfaces are the
+exception: the Host paints its canvas, panels, cards and popovers with one pure white
+step whose lightness this generator keeps on purpose, so they are set at the token
+level to Bloom's own light anchors — canvas `oklch(96.5% 0.01 240)`, panel layers
+`oklch(97.6%/98.4%/99% 0.008/0.006/0.004 240)`, sidebar `oklch(94.5% 0.012 240)` —
+keeping the panels lighter than the canvas so the mist reads as the page and content
+still reads as paper.
 
 | Pair | Bloom Lite | Verdict |
 |---|---|---|
 | light body text on the mist canvas | 17.16:1 | AA |
 | light secondary text on canvas | 5.24:1 | AA |
 | light tertiary text on canvas | 3.37:1 | AA-large |
-| light text on a white card | 18.90:1 | AA |
+| light body text on a panel | 17.64:1 | AA |
+| light secondary text on a panel | 5.39:1 | AA |
+| light tertiary text on a panel | 3.46:1 | AA-large |
+| light text in a popover | 18.34:1 | AA |
 | light sidebar text | 4.92:1 | AA |
 | light primary button label (white on `#2078ab`) | 4.84:1 | AA |
 | dark body text on base | 17.45:1 | AA |

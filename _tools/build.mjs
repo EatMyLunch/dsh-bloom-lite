@@ -55,13 +55,16 @@ for (const selector of ['html body{', 'html body[data-ds-dark-theme]{']) {
 }
 
 /* ---------- JS: comments out, one line, stylesheet inlined ---------- */
+// Both comment forms are dropped: block comments inline, and whole lines that start with
+// `//` (the template uses those for the long explanations). Trailing `//` comments are not
+// stripped, so keep explanations on their own line.
 const out = template
   .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/'__BLOOM_CSS__'/, JSON.stringify(min))
   .split('\n')
   .map((line) => line.trim())
-  .filter((line) => line.length > 0)
+  .filter((line) => line.length > 0 && !line.startsWith('//'))
   .join(' ')
+  .replace(/'__BLOOM_CSS__'/, JSON.stringify(min))
   .replace(/ {2,}/g, ' ')
 
 try {
