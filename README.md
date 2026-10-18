@@ -117,8 +117,19 @@ _tools/build.mjs    inliner, minifier, performance guards
 Install / update:
 
 ```
-plugin_manager { action: "install_bundle", target: "<this directory>" }
+git clone https://github.com/EatMyLunch/dsh-bloom-lite.git
 ```
+
+Then add that checkout to the active profile as a bundle — the Harness's plugin
+manager takes the absolute directory path:
+
+```
+plugin_manager { action: "install_bundle", target: "C:/path/to/dsh-bloom-lite" }
+```
+
+There is no build step and there are no dependencies: `client.js` is committed
+already built, so the Harness serves exactly the bytes this repo reviews. Deleting
+the checkout removes the theme.
 
 ## Verification status
 
