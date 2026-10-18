@@ -1,0 +1,5 @@
+# Bundle patch: installs dsh-bloom-lite into the profile boot graph.
+# `name` must stay equal to the package name so the loader can resolve it.
+- insert:
+    - id: bloom-lite
+      name: 'dsh-bloom-lite'
